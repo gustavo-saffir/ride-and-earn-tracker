@@ -54,6 +54,16 @@ const Index = () => {
     setRecords([newRecord, ...records]);
   };
 
+  const updateRecord = (id: string, updatedRecord: Omit<DailyRecord, "id">) => {
+    setRecords(records.map(record => 
+      record.id === id ? { ...updatedRecord, id } : record
+    ));
+  };
+
+  const deleteRecord = (id: string) => {
+    setRecords(records.filter(record => record.id !== id));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-gradient-primary text-white py-6 shadow-lg">
@@ -92,7 +102,11 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="records">
-            <RecordsTab records={records} />
+            <RecordsTab 
+              records={records} 
+              onUpdateRecord={updateRecord}
+              onDeleteRecord={deleteRecord}
+            />
           </TabsContent>
 
           <TabsContent value="charts">

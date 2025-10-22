@@ -1,15 +1,32 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { EditRecordDialog } from "@/components/EditRecordDialog";
 import { DailyRecord } from "@/pages/Index";
-import { Calendar, TrendingUp } from "lucide-react";
+import { Calendar, Pencil, Trash2, Gauge } from "lucide-react";
+import { toast } from "sonner";
 
 interface RecordsTabProps {
   records: DailyRecord[];
+  onUpdateRecord: (id: string, record: Omit<DailyRecord, "id">) => void;
+  onDeleteRecord: (id: string) => void;
 }
 
-export function RecordsTab({ records }: RecordsTabProps) {
+export function RecordsTab({ records, onUpdateRecord, onDeleteRecord }: RecordsTabProps) {
   const [period, setPeriod] = useState<"day" | "week" | "month">("day");
+  const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const getFilteredRecords = () => {
     const now = new Date();
@@ -37,6 +54,20 @@ export function RecordsTab({ records }: RecordsTabProps) {
   const totalRevenue = filteredRecords.reduce((sum, r) => sum + r.revenue, 0);
   const totalCosts = filteredRecords.reduce((sum, r) => sum + r.fuel + r.variableCosts, 0);
   const totalProfit = filteredRecords.reduce((sum, r) => sum + r.netProfit, 0);
+
+  const handleDelete = () => {
+    if (deletingId) {
+      onDeleteRecord(deletingId);
+      toast.success("Registro excluído com sucesso!");
+      setDeletingId(null);
+    }
+  };
+
+  const FUEL_LABELS = {
+    gasoline: "Gasolina",
+    ethanol: "Etanol",
+    cng: "GNV",
+  };
 
   return (
     <div className="space-y-6">
@@ -94,7 +125,7 @@ export function RecordsTab({ records }: RecordsTabProps) {
                 filteredRecords.map((record) => (
                   <div
                     key={record.id}
-                    className="p-4 bg-gradient-card border rounded-lg space-y-2 hover:shadow-card transition-shadow"
+                    className="p-4 bg-gradient-card border rounded-lg space-y-3 hover:shadow-card transition-shadow"
                   >
                     <div className="flex justify-between items-center">
                       <span className="font-semibold">
@@ -119,7 +150,9 @@ export function RecordsTab({ records }: RecordsTabProps) {
                         <p className="font-semibold text-success">R$ {record.revenue.toFixed(2)}</p>
                       </div>
                       <div>
-                        <p className="text-muted-foreground">Combustível</p>
+                        <p className="text-muted-foreground">
+                          Combustível ({record.fuelType ? FUEL_LABELS[record.fuelType] : "N/A"})
+                        </p>
                         <p className="font-semibold text-destructive">R$ {record.fuel.toFixed(2)}</p>
                       </div>
                       <div>
@@ -129,6 +162,34 @@ export function RecordsTab({ records }: RecordsTabProps) {
                         </p>
                       </div>
                     </div>
+                    {record.kilometers && record.fuelEfficiency ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground pt-2 border-t">
+                        <Gauge className="h-4 w-4" />
+                        <span>
+                          {record.kilometers.toFixed(0)} km rodados • {record.fuelEfficiency.toFixed(2)} km/L
+                        </span>
+                      </div>
+                    ) : null}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditingRecord(record)}
+                        className="flex-1"
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Editar
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setDeletingId(record.id)}
+                        className="flex-1 text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-1" />
+                        Excluir
+                      </Button>
+                    </div>
                   </div>
                 ))
               )}
@@ -136,6 +197,35 @@ export function RecordsTab({ records }: RecordsTabProps) {
           </Tabs>
         </CardContent>
       </Card>
+
+      {editingRecord && (
+        <EditRecordDialog
+          open={!!editingRecord}
+          onOpenChange={(open) => !open && setEditingRecord(null)}
+          record={editingRecord}
+          onSave={onUpdateRecord}
+        />
+      )}
+
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Registro</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este registro? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
