@@ -1,14 +1,21 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { DailyRecord } from "@/pages/Index";
+import { DailyRecord, UserSettings } from "@/pages/Index";
 import { Target, Calendar, TrendingUp, Lightbulb, Coffee } from "lucide-react";
 
 interface GoalsTabProps {
   records: DailyRecord[];
+  settings: UserSettings;
 }
 
-export function GoalsTab({ records }: GoalsTabProps) {
-  const WEEKLY_GOAL = 1000;
+const DAYS_NAMES = [
+  "Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira",
+  "Quinta-feira", "Sexta-feira", "Sábado"
+];
+
+export function GoalsTab({ records, settings }: GoalsTabProps) {
+  const WEEKLY_GOAL = settings.weeklyGoal;
+  const DAY_OFF = settings.dayOff;
 
   const getWeekRecords = () => {
     const now = new Date();
@@ -25,8 +32,15 @@ export function GoalsTab({ records }: GoalsTabProps) {
   const remaining = Math.max(WEEKLY_GOAL - weeklyTotal, 0);
 
   const now = new Date();
-  const daysUntilSunday = 7 - now.getDay();
-  const workingDaysLeft = daysUntilSunday === 7 ? 0 : Math.max(daysUntilSunday - 1, 0);
+  const currentDay = now.getDay();
+  
+  // Calculate days until next week starts
+  const daysUntilWeekEnd = DAY_OFF >= currentDay 
+    ? DAY_OFF - currentDay 
+    : 7 - currentDay + DAY_OFF;
+  
+  // Calculate working days left (excluding day off)
+  const workingDaysLeft = Math.max(daysUntilWeekEnd - (currentDay === DAY_OFF ? 0 : 0), 0);
   const dailyTarget = workingDaysLeft > 0 ? remaining / workingDaysLeft : 0;
 
   const motivationalMessage = () => {
@@ -46,7 +60,7 @@ export function GoalsTab({ records }: GoalsTabProps) {
             Meta Semanal
           </CardTitle>
           <CardDescription className="text-white/90">
-            Acompanhe seu progresso em direção à meta de R$ 1.000/semana
+            Acompanhe seu progresso em direção à meta de R$ {WEEKLY_GOAL.toFixed(2)}/semana
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -81,27 +95,50 @@ export function GoalsTab({ records }: GoalsTabProps) {
             <Calendar className="h-5 w-5 text-primary" />
             Planejamento Semanal
           </CardTitle>
-          <CardDescription>Trabalhe 5-6 dias com folga no domingo</CardDescription>
+          <CardDescription>
+            Trabalhe 6 dias com folga {DAY_OFF === 0 ? "no domingo" : `na ${DAYS_NAMES[DAY_OFF].toLowerCase()}`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            <div className="p-3 bg-secondary rounded-lg flex justify-between items-center">
-              <span className="font-medium">Segunda a Quinta</span>
-              <span className="text-primary font-bold">R$ 160-180/dia</span>
-            </div>
-            <div className="p-3 bg-secondary rounded-lg flex justify-between items-center">
-              <span className="font-medium">Sexta</span>
-              <span className="text-primary font-bold">R$ 180-220/dia</span>
-            </div>
-            <div className="p-3 bg-gradient-success text-white rounded-lg flex justify-between items-center">
-              <span className="font-medium">Sábado (Melhor dia!)</span>
-              <span className="font-bold">R$ 200-250/dia</span>
-            </div>
-            <div className="p-3 bg-gradient-primary text-white rounded-lg flex justify-between items-center">
-              <Coffee className="h-5 w-5" />
-              <span className="font-medium">Domingo - Dia de Folga!</span>
-              <span className="font-bold">Descanso</span>
-            </div>
+            {[0, 1, 2, 3, 4, 5, 6].map((day) => {
+              const isWeekend = day === 0 || day === 6;
+              const isDayOff = day === DAY_OFF;
+              const suggestedAmount = isDayOff 
+                ? null 
+                : isWeekend 
+                  ? (WEEKLY_GOAL * 0.2).toFixed(0) + "-" + (WEEKLY_GOAL * 0.25).toFixed(0)
+                  : (WEEKLY_GOAL * 0.14).toFixed(0) + "-" + (WEEKLY_GOAL * 0.16).toFixed(0);
+
+              if (isDayOff) {
+                return (
+                  <div key={day} className="p-3 bg-gradient-primary text-white rounded-lg flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Coffee className="h-5 w-5" />
+                      <span className="font-medium">{DAYS_NAMES[day]} - Dia de Folga!</span>
+                    </div>
+                    <span className="font-bold">Descanso</span>
+                  </div>
+                );
+              }
+
+              return (
+                <div 
+                  key={day} 
+                  className={isWeekend 
+                    ? "p-3 bg-gradient-success text-white rounded-lg flex justify-between items-center"
+                    : "p-3 bg-secondary rounded-lg flex justify-between items-center"
+                  }
+                >
+                  <span className={isWeekend ? "font-medium" : "font-medium"}>
+                    {DAYS_NAMES[day]} {isWeekend && day !== DAY_OFF ? "(Melhor dia!)" : ""}
+                  </span>
+                  <span className={isWeekend ? "font-bold" : "text-primary font-bold"}>
+                    R$ {suggestedAmount}/dia
+                  </span>
+                </div>
+              );
+            })}
           </div>
 
           {workingDaysLeft > 0 && (
